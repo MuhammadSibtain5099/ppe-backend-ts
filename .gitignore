@@ -1,0 +1,22 @@
+# dependencies & builds
+node_modules/
+dist/
+build/
+.tmp/
+coverage/
+.nyc_output/
+
+# env & secrets
+.env
+.env.*.local
+
+# logs & OS/editor files
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# docker/gcloud
+docker-compose.override.yml
+.gcloudignore
