@@ -11,5 +11,6 @@ const r = Router();
 // Public registration (no auth header required)
 r.post('/register', ctrl.registerCompany);
 
+r.post('/login', ctrl.loginCompany);           // <-- email+password login (no regNumber)
 
 export default r;
