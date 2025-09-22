@@ -7,9 +7,9 @@ import workerRoutes from './routes/worker.routes';
 import taskRoutes from './routes/task.routes';
 import ppeRoutes from './routes/ppe.routes';
 import companyRoutes from './routes/company.routes';
-
-
+import { errorHandler } from './middleware/errors';
 export const app = express();
+
 
 app.use(helmet());
 app.use(cors());
@@ -25,3 +25,5 @@ app.use('/api/workers', workerRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/ppe', ppeRoutes);
 app.use('/api/companies', companyRoutes);
+
+app.use(errorHandler);

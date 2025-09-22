@@ -24,4 +24,6 @@ CompanySchema.pre('validate', function (next) {
   next();
 });
 
+
+
 export default model('Company', CompanySchema);

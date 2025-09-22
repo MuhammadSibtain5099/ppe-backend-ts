@@ -1,10 +1,14 @@
 import { Schema, model, Types, InferSchemaType } from 'mongoose';
+
 const WorkerSchema = new Schema({
-  companyId:      { type:Types.ObjectId, ref:'Company', required:true },
-  userId:         { type:Types.ObjectId, ref:'User' },
-  nationalIdHash: { type:Buffer, required:true },
-  name:String, dob:Date, phone:String, photoUrl:String
-},{ timestamps:true });
-WorkerSchema.index({ companyId:1, nationalIdHash:1 }, { unique:true });
+  userId:         { type: Types.ObjectId, ref: 'User' },
+  nationalIdHash: { type: Buffer },
+  name:           String,
+  dob:            Date,
+  phone:          { type: String, unique: true, sparse: true },
+  photoUrl:       String,
+  status:         { type: String, enum: ['independent', 'active', 'inactive'], default: 'independent' }
+}, { timestamps: true });
+
 export type Worker = InferSchemaType<typeof WorkerSchema>;
 export default model<Worker>('Worker', WorkerSchema);
