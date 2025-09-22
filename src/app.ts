@@ -6,6 +6,7 @@ import projectRoutes from './routes/project.routes';
 import workerRoutes from './routes/worker.routes';
 import taskRoutes from './routes/task.routes';
 import ppeRoutes from './routes/ppe.routes';
+import companyRoutes from './routes/company.routes';
 
 
 export const app = express();
@@ -23,4 +24,4 @@ app.use('/api/auth', authRoutes);
 app.use('/api/workers', workerRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/ppe', ppeRoutes);
-
+app.use('/api/companies', companyRoutes);
