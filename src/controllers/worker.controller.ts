@@ -183,3 +183,12 @@ export async function addWorkerByCompany(req: Request, res: Response) {
     status: 'approved'
   });
 }
+
+// In task.controller.ts
+export async function unassignWorkerFromTask(req: Request, res: Response) {
+  const { taskId } = req.params;
+  const { workerId } = req.body;
+  const result = await TaskAssignment.findOneAndDelete({ taskId, workerId });
+  if (!result) throw new HttpError(404, 'Assignment not found');
+  res.json({ success: true });
+}

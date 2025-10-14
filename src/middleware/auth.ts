@@ -5,16 +5,19 @@ import jwt from 'jsonwebtoken';
 type Role = 'admin' | 'manager' | 'subcontractor' | 'worker';
 interface JwtClaims { sub: string; companyId: string; roles: Role[]; }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'test';
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const hdr = req.headers.authorization;
+ 
   if (!hdr?.startsWith('Bearer ')) return next(new Error('Missing token'));
   try {
     const token = hdr.slice(7);
     req.user = jwt.verify(token, JWT_SECRET) as JwtClaims;
+    console.log('Authenticated', req.user);
     next();
   } catch {
+    console.log(hdr);
     next(new Error('Invalid token'));
   }
 }

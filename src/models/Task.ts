@@ -1,9 +1,15 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, model, Types, InferSchemaType } from 'mongoose';
+
 const TaskSchema = new Schema({
-  companyId: { type:Types.ObjectId, ref:'Company', required:true },
-  projectId: { type:Types.ObjectId, ref:'Project', required:true },
-  workDate:  { type:Date, required:true },
-  title:String, shift:String, notes:String,
-  supervisorId: { type:Types.ObjectId, ref:'User' }
-},{ timestamps:true });
-export default model('Task', TaskSchema);
+  companyId:   { type: Types.ObjectId, ref: 'Company', required: true },
+  projectId:   { type: Types.ObjectId, ref: 'Project', required: true },
+  title:       { type: String, required: true },
+  workDate:    { type: Date, required: true },
+  shift:       { type: String },
+  notes:       { type: String },
+  managerId:   { type: Types.ObjectId, ref: 'User', required: true },
+  deletedAt:   { type: Date }
+}, { timestamps: true });
+
+export type Task = InferSchemaType<typeof TaskSchema>;
+export default model<Task>('Task', TaskSchema);

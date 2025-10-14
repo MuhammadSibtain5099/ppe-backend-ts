@@ -37,6 +37,7 @@ export async function login(req: Request, res: Response) {
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) throw new HttpError(401,'Invalid credentials');
   const membership = await Membership.findOne({ userId: user._id, companyId });
   if (!membership) throw new HttpError(403,'No access to this company');
+  console.log(SECRET);
   const token = jwt.sign({ sub: user._id, companyId, roles: [membership.role] }, SECRET, { expiresIn:'7d' });
   res.json({ token });
 }

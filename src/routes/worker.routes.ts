@@ -8,23 +8,24 @@ import {
   workerLogin,
   workerStats,
   workerHistory,
-  addWorkerByCompany
+  addWorkerByCompany,
+  unassignWorkerFromTask
 } from '../controllers/worker.controller';
 
 const r = Router();
 
 // Independent worker
-r.post('/api/workers/register', registerIndependentWorker);
+r.post('/register', registerIndependentWorker);
 
 // Worker joins/leaves company
-r.post('/api/workers/:workerId/link/:companyId', requireAuth, linkWorkerToCompany);
+r.post('/:workerId/link/:companyId', requireAuth, linkWorkerToCompany);
 r.post('/api/workers/:workerId/unlink/:companyId', requireAuth, unlinkWorkerFromCompany);
 
 // Approve/reject worker
 r.post('/api/workers/:workerId/approve/:companyId', requireAuth, approveWorker);
 
 // Worker login
-r.post('/api/workers/login', workerLogin);
+r.post('/login', workerLogin);
 
 // Worker stats
 r.get('/api/workers/:workerId/stats', requireAuth, workerStats);
@@ -33,6 +34,8 @@ r.get('/api/workers/:workerId/stats', requireAuth, workerStats);
 r.get('/api/workers/:workerId/history', requireAuth, workerHistory);
 
 // Company directly adds worker
-r.post('/api/companies/:companyId/workers', requireAuth, addWorkerByCompany);
+r.post('/companies/:companyId/workers', requireAuth, addWorkerByCompany);
+
+r.delete('/api/companies/:companyId/projects/:projectId/tasks/:taskId/workers', requireAuth, unassignWorkerFromTask);
 
 export default r;

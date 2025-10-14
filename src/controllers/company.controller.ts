@@ -9,7 +9,7 @@ import Worker from '../models/Worker';
 import Task from '../models/Task';
 import PPECheck from '../models/PPECheck';
 
-const SECRET = process.env.JWT_SECRET || 'dev-secret';
+const SECRET = process.env.JWT_SECRET || 'test';
 
 /**
  * POST /api/companies/register
@@ -90,6 +90,9 @@ export async function registerCompany(req: Request, res: Response, next: NextFun
 
 export async function loginCompany(req: Request, res: Response, next: NextFunction) {
   try {
+    console.log('SECRET', SECRET);
+    console.log('Login attempt', req.body);
+
     const { email, password, companyId } = req.body || {};
 
     if (!email)    return res.status(400).json({ error: 'email is required' });
@@ -108,6 +111,7 @@ export async function loginCompany(req: Request, res: Response, next: NextFuncti
       return res.status(403).json({ error: 'No company memberships for this user' });
     }
 
+
     // If client provided companyId, try to use that directly
     if (companyId) {
       const m = memberships.find(m => String(m.companyId) === String(companyId));
@@ -121,7 +125,7 @@ export async function loginCompany(req: Request, res: Response, next: NextFuncti
         SECRET,
         { expiresIn: '7d' }
       );
-
+   
       return res.json({
         token,
         companyId: company._id,
@@ -129,7 +133,7 @@ export async function loginCompany(req: Request, res: Response, next: NextFuncti
         status: company.status   // e.g., 'pending' | 'verified' | 'rejected' (if you added it)
       });
     }
-
+ 
     // No companyId provided
     if (memberships.length === 1) {
       const only = memberships[0];
