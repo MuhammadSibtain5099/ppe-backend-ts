@@ -8,7 +8,21 @@ import TaskAssignment from '../models/TaskAssignment';
 import PPECheck from '../models/PPECheck';
 import { HttpError } from '../middleware/errors';
 
-const SECRET = process.env.JWT_SECRET || 'dev-secret';
+const SECRET = process.env.JWT_SECRET || 'test';
+
+
+(async () => {
+  try {
+    await Worker.collection.dropIndex('companyId_1_nationalIdHash_1');
+    console.log('✅ Old index dropped successfully');
+  } catch (err: any) {
+    if (err.code === 27) {
+      console.log('ℹ️ Index not found (already removed)');
+    } else {
+      console.error('⚠️ Failed to drop index:', err);
+    }
+  }
+})();
 
 /**
  * Independent worker registration (no company required)
@@ -191,4 +205,54 @@ export async function unassignWorkerFromTask(req: Request, res: Response) {
   const result = await TaskAssignment.findOneAndDelete({ taskId, workerId });
   if (!result) throw new HttpError(404, 'Assignment not found');
   res.json({ success: true });
+}
+
+interface PopulatedMembership {
+  userId: { _id: string; name?: string; email?: string } | null;
+  companyId: string;
+  role: string;
+  status: string;
+}
+
+export async function listCompanyWorkers(req: Request, res: Response) {
+  const { companyId } = req.params;
+
+  // Step 1: Find approved worker memberships
+  const memberships = await Membership.find({
+    companyId,
+    role: 'worker',
+    status: 'approved'
+  })
+    .populate({ path: 'userId', model: User, select: ['name', 'email'] })
+    .lean<PopulatedMembership[]>();
+
+  if (!memberships.length) {
+    throw new HttpError(404, 'No approved workers found for this company');
+  }
+
+  // Step 2: Extract userIds
+  const userIds = memberships
+    .map(m => m.userId?._id)
+    .filter((id): id is string => Boolean(id));
+
+  // Step 3: Get worker profiles
+  const workers = await Worker.find({ userId: { $in: userIds } })
+    .select('userId name phone status photoUrl')
+    .lean();
+
+  // Step 4: Merge membership + worker + user data
+  const combined = workers.map(worker => {
+    const membership = memberships.find(m => m.userId?._id === String(worker.userId));
+    return {
+      workerId: worker._id,
+      userId: worker.userId,
+      name: worker.name || membership?.userId?.name,
+      email: membership?.userId?.email,
+      phone: worker.phone,
+      status: worker.status,
+      membershipStatus: membership?.status
+    };
+  });
+
+  res.json({ companyId, total: combined.length, workers: combined });
 }

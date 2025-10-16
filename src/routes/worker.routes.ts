@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth';
+import { requireRole, requireAuth } from '../middleware/auth';
 import {
   registerIndependentWorker,
   linkWorkerToCompany,
@@ -11,6 +11,8 @@ import {
   addWorkerByCompany,
   unassignWorkerFromTask
 } from '../controllers/worker.controller';
+
+import { listCompanyWorkers } from '../controllers/worker.controller';
 
 const r = Router();
 
@@ -37,5 +39,13 @@ r.get('/api/workers/:workerId/history', requireAuth, workerHistory);
 r.post('/companies/:companyId/workers', requireAuth, addWorkerByCompany);
 
 r.delete('/api/companies/:companyId/projects/:projectId/tasks/:taskId/workers', requireAuth, unassignWorkerFromTask);
+
+
+r.get(
+  '/companies/:companyId/workers',
+  requireAuth,
+  requireRole('admin', 'manager'),
+  listCompanyWorkers
+);
 
 export default r;
