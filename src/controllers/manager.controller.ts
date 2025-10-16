@@ -37,26 +37,36 @@ export async function addManager(req: Request, res: Response) {
   });
 }
 
+interface PopulatedManager {
+  userId: { _id: string; name?: string; email?: string } | null;
+  companyId: string;
+  role: string;
+  status: string;
+  createdAt: Date;
+}
+
 /**
  * READ - List all managers of a company
  */
+// READ - List all managers of a company
 export async function listManagers(req: Request, res: Response) {
   const { companyId } = req.params;
 
   const managers = await Membership.find({ companyId, role: 'manager' })
-    .populate({ path: 'userId', model: User, select: ['name', 'email', 'createdAt'] })
-    .lean();
+    .populate({ path: 'userId', model: User, select: ['name', 'email', '_id'] })
+    .lean<PopulatedManager[]>(); // ✅ tell TypeScript the populated type
 
   const result = managers.map(m => ({
-    userId: m.userId?._id,
-    name: m.userId?.name,
-    email: m.userId?.email,
+    userId: m.userId?._id ?? null,
+    name: m.userId?.name ?? null,
+    email: m.userId?.email ?? null,
     status: m.status,
     joinedAt: m.createdAt
   }));
 
   res.json({ companyId, total: result.length, managers: result });
 }
+
 
 /**
  * UPDATE - Update manager info or role (optional)
