@@ -127,35 +127,50 @@ export async function removeManager(req: Request, res: Response) {
 }
 
 /**
- * POST /api/companies/:companyId/managers/login
- * Manager Login - verifies credentials and issues JWT
+ * POST /api/managers/login
+ * Manager Login (auto-detects company from Membership)
  */
 export async function managerLogin(req: Request, res: Response) {
-  const { companyId } = req.params;
   const { email, password } = req.body;
 
   if (!email || !password)
     throw new HttpError(400, 'Email and password are required');
 
-  // 🔹 Step 1: Find user
+  // 🔹 1. Find user
   const user = await User.findOne({ email: email.toLowerCase() });
   if (!user) throw new HttpError(401, 'Invalid credentials');
 
-  // 🔹 Step 2: Verify password
+  // 🔹 2. Verify password
   const validPassword = await bcrypt.compare(password, user.passwordHash);
   if (!validPassword) throw new HttpError(401, 'Invalid credentials');
 
-  // 🔹 Step 3: Check manager membership in company
-  const membership = await Membership.findOne({
+  // 🔹 3. Find active manager memberships
+  const memberships = await Membership.find({
     userId: user._id,
-    companyId,
     role: 'manager',
     status: 'approved'
-  });
+  }).populate('companyId', 'name status');
 
-  if (!membership) throw new HttpError(403, 'Not authorized as a manager for this company');
+  if (!memberships.length)
+    throw new HttpError(403, 'You are not assigned as a manager in any company');
 
-  // 🔹 Step 4: Generate JWT
+  // 🔹 4. If multiple companies, return selection list
+  if (memberships.length > 1) {
+    return res.status(200).json({
+      needsCompanySelection: true,
+      message: 'Manager belongs to multiple companies. Please select one.',
+      companies: memberships.map(m => ({
+        companyId: m.companyId?._id,
+        companyName: m.companyId?.name,
+        status: m.companyId?.status
+      }))
+    });
+  }
+
+  // 🔹 5. If only one company, auto-login
+  const company = memberships[0].companyId;
+  const companyId = company?._id;
+
   const token = jwt.sign(
     {
       sub: String(user._id),
@@ -166,7 +181,6 @@ export async function managerLogin(req: Request, res: Response) {
     { expiresIn: '7d' }
   );
 
-  // 🔹 Step 5: Return success
   res.json({
     message: 'Login successful',
     token,
@@ -174,7 +188,8 @@ export async function managerLogin(req: Request, res: Response) {
       userId: user._id,
       name: user.name,
       email: user.email,
-      companyId
+      companyId,
+      companyName: company?.name
     }
   });
 }
