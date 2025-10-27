@@ -3,7 +3,8 @@ import bcrypt from 'bcrypt';
 import User from '../models/User';
 import Membership from '../models/Membership';
 import { HttpError } from '../middleware/errors';
-
+import jwt from 'jsonwebtoken';
+const SECRET = process.env.JWT_SECRET || 'dev-secret';
 /**
  * CREATE - Add manager to company
  */
@@ -125,3 +126,55 @@ export async function removeManager(req: Request, res: Response) {
   });
 }
 
+/**
+ * POST /api/companies/:companyId/managers/login
+ * Manager Login - verifies credentials and issues JWT
+ */
+export async function managerLogin(req: Request, res: Response) {
+  const { companyId } = req.params;
+  const { email, password } = req.body;
+
+  if (!email || !password)
+    throw new HttpError(400, 'Email and password are required');
+
+  // 🔹 Step 1: Find user
+  const user = await User.findOne({ email: email.toLowerCase() });
+  if (!user) throw new HttpError(401, 'Invalid credentials');
+
+  // 🔹 Step 2: Verify password
+  const validPassword = await bcrypt.compare(password, user.passwordHash);
+  if (!validPassword) throw new HttpError(401, 'Invalid credentials');
+
+  // 🔹 Step 3: Check manager membership in company
+  const membership = await Membership.findOne({
+    userId: user._id,
+    companyId,
+    role: 'manager',
+    status: 'approved'
+  });
+
+  if (!membership) throw new HttpError(403, 'Not authorized as a manager for this company');
+
+  // 🔹 Step 4: Generate JWT
+  const token = jwt.sign(
+    {
+      sub: String(user._id),
+      companyId: String(companyId),
+      roles: ['manager']
+    },
+    SECRET,
+    { expiresIn: '7d' }
+  );
+
+  // 🔹 Step 5: Return success
+  res.json({
+    message: 'Login successful',
+    token,
+    manager: {
+      userId: user._id,
+      name: user.name,
+      email: user.email,
+      companyId
+    }
+  });
+}

@@ -4,7 +4,8 @@ import {
   addManager,
   listManagers,
   updateManager,
-  removeManager
+  removeManager,
+  managerLogin
 } from '../controllers/manager.controller';
 
 const router = express.Router();
@@ -41,4 +42,5 @@ router.delete(
   removeManager
 );
 
+router.post('/login', managerLogin); // ✅ new login endpoint 
 export default router;

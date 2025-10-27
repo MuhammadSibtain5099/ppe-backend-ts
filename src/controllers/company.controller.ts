@@ -8,7 +8,8 @@ import Project from '../models/Project';
 import Worker from '../models/Worker';
 import Task from '../models/Task';
 import PPECheck from '../models/PPECheck';
-
+import dotenv from 'dotenv';
+dotenv.config();
 const SECRET = process.env.JWT_SECRET || 'test';
 
 /**
@@ -42,11 +43,10 @@ export async function registerCompany(req: Request, res: Response, next: NextFun
 
     // create admin user
     const passwordHash = await bcrypt.hash(String(admin.password), 10);
-    const user = await User.create({
-      email: String(admin.email).toLowerCase(),
-      passwordHash,
-      name: admin.name
-    });
+  
+
+    const user  = new User({ email: String(admin.email).toLowerCase(), passwordHash, name: admin.name})
+    
 
     // create company (status: pending)
     const companyDoc = await Company.create({
@@ -60,6 +60,8 @@ export async function registerCompany(req: Request, res: Response, next: NextFun
       status: 'pending'
     });
 
+   await Promise.all([user])
+  await user.save()
     // link membership
     await Membership.create({
       companyId: companyDoc._id,
@@ -90,8 +92,7 @@ export async function registerCompany(req: Request, res: Response, next: NextFun
 
 export async function loginCompany(req: Request, res: Response, next: NextFunction) {
   try {
-    console.log('SECRET', SECRET);
-    console.log('Login attempt', req.body);
+  
 
     const { email, password, companyId } = req.body || {};
 

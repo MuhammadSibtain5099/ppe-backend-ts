@@ -8,6 +8,7 @@ const TaskSchema = new Schema({
   shift:       { type: String },
   notes:       { type: String },
   managerId:   { type: Types.ObjectId, ref: 'User', required: true },
+  teamLeadId: { type: Types.ObjectId, ref: 'User', default: null }, 
   deletedAt:   { type: Date }
 }, { timestamps: true });
 
