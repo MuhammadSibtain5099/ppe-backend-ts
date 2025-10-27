@@ -126,6 +126,16 @@ export async function removeManager(req: Request, res: Response) {
   });
 }
 
+
+interface PopulatedMembership {
+  companyId: {
+    _id: string;
+    name?: string;
+    status?: string;
+  } | null;
+}
+
+
 /**
  * POST /api/managers/login
  * Manager Login (auto-detects company from Membership)
@@ -136,38 +146,37 @@ export async function managerLogin(req: Request, res: Response) {
   if (!email || !password)
     throw new HttpError(400, 'Email and password are required');
 
-  // 🔹 1. Find user
   const user = await User.findOne({ email: email.toLowerCase() });
   if (!user) throw new HttpError(401, 'Invalid credentials');
 
-  // 🔹 2. Verify password
   const validPassword = await bcrypt.compare(password, user.passwordHash);
   if (!validPassword) throw new HttpError(401, 'Invalid credentials');
 
-  // 🔹 3. Find active manager memberships
   const memberships = await Membership.find({
     userId: user._id,
     role: 'manager',
     status: 'approved'
-  }).populate('companyId', 'name status');
+  })
+    .populate('companyId', 'name status')
+    .lean<PopulatedMembership[]>();
 
   if (!memberships.length)
     throw new HttpError(403, 'You are not assigned as a manager in any company');
 
-  // 🔹 4. If multiple companies, return selection list
   if (memberships.length > 1) {
+    const companies = memberships.map(m => ({
+      companyId: m.companyId?._id ?? null,
+      companyName: m.companyId?.name ?? null,
+      status: m.companyId?.status ?? null
+    }));
+
     return res.status(200).json({
       needsCompanySelection: true,
       message: 'Manager belongs to multiple companies. Please select one.',
-      companies: memberships.map(m => ({
-        companyId: m.companyId?._id,
-        companyName: m.companyId?.name,
-        status: m.companyId?.status
-      }))
+      companies
     });
   }
 
-  // 🔹 5. If only one company, auto-login
   const company = memberships[0].companyId;
   const companyId = company?._id;
 
