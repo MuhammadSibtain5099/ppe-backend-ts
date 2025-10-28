@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Task from '../models/Task';
 import Worker from '../models/Worker';
 import TaskAssignment from '../models/TaskAssignment';
+import Project from '../models/Project';
 import { HttpError } from '../middleware/errors';
 
 // Create task
@@ -85,4 +86,28 @@ export async function listTaskWorkers(req: Request, res: Response) {
   const { taskId } = req.params;
   const assignments = await TaskAssignment.find({ taskId }).populate('workerId');
   res.json(assignments.map(a => a.workerId));
+}
+
+
+export async function listTasksByManager(req: Request, res: Response) {
+  const { managerId } = req.params;
+  const { companyId, projectId } = req.query; // optional filters
+
+  if (!managerId) throw new HttpError(400, 'managerId is required');
+
+  const filter: any = { managerId, deletedAt: { $exists: false } };
+
+  if (companyId) filter.companyId = companyId;
+  if (projectId) filter.projectId = projectId;
+
+  const tasks = await Task.find(filter)
+    .populate('projectId', 'name description') // optional
+    .sort({ workDate: -1 })
+    .lean();
+
+  res.json({
+    managerId,
+    total: tasks.length,
+    tasks
+  });
 }

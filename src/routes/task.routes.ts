@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth';
 import {
   createTask, listTasks, getTask, updateTask, deleteTask,
-  assignWorkerToTask, listTaskWorkers
+  assignWorkerToTask, listTaskWorkers,listTasksByManager
 } from '../controllers/task.controller';
 
 const r = Router();
@@ -15,5 +15,6 @@ r.delete('/api/companies/:companyId/projects/:projectId/tasks/:taskId', requireA
 
 r.post('/api/companies/:companyId/projects/:projectId/tasks/:taskId/workers', requireAuth, assignWorkerToTask);
 r.get('/api/companies/:companyId/projects/:projectId/tasks/:taskId/workers', requireAuth, listTaskWorkers);
+r.get('/:managerId/tasks', listTasksByManager);
 
 export default r;

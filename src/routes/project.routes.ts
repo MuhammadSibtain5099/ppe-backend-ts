@@ -14,7 +14,6 @@ r.get('/:companyId/projects', requireAuth, listProjects);
 r.get('/:companyId/projects/:projectId', requireAuth, getProject);
 r.patch('/:companyId/projects/:projectId', requireAuth, updateProject);
 r.delete('/:companyId/projects/:projectId', requireAuth, deleteProject);
-
 r.post('/:companyId/projects/:projectId/workers', requireAuth, assignWorkerToProject);
 r.get('/:companyId/projects/:projectId/workers', requireAuth, listProjectWorkers);
 
