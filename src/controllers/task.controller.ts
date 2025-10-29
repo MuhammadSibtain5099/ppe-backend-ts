@@ -84,8 +84,38 @@ export async function assignWorkerToTask(req: Request, res: Response) {
 // List workers in task
 export async function listTaskWorkers(req: Request, res: Response) {
   const { taskId } = req.params;
-  const assignments = await TaskAssignment.find({ taskId }).populate('workerId');
-  res.json(assignments.map(a => a.workerId));
+
+  // Check if taskId provided
+  if (!taskId) throw new HttpError(400, 'taskId is required');
+
+  // Find all worker assignments for this task
+  const assignments = await TaskAssignment.find({ taskId })
+    .populate({
+      path: 'workerId',
+      model: Worker,
+      select: ['_id', 'companyId', 'userId', 'name', 'phone', 'status', 'createdAt', 'updatedAt']
+    })
+    .lean();
+
+  // Map populated worker data safely
+  const workers = assignments
+    .map(a => {
+      const w = a.workerId as any;
+      if (!w) return null;
+      return {
+        _id: w._id,
+        companyId: w.companyId ?? null,
+        userId: w.userId ?? null,
+        name: w.name ?? null,
+        phone: w.phone ?? null,
+        status: w.status ?? null,
+        createdAt: w.createdAt,
+        updatedAt: w.updatedAt
+      };
+    })
+    .filter(Boolean);
+
+  res.json(workers);
 }
 
 

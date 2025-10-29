@@ -178,6 +178,7 @@ export async function addWorkerByCompany(req: Request, res: Response) {
 
   const worker = await Worker.create({
     userId,
+    companyId,
     name,
     phone,
     status: 'active'
