@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import axios from 'axios';
 import PPECheck from '../models/PPECheck';
+import { uploadToGCS } from '../utils/gcsUploader';
 import { Request, Response } from 'express';
 import { HttpError } from '../middleware/errors';
 
@@ -10,56 +11,36 @@ import { HttpError } from '../middleware/errors';
  */
 export async function submitCheck(req: Request, res: Response) {
   const { companyId, taskId } = req.params;
-
-  // Security check — prevent cross-company misuse
   if (companyId !== req.user?.companyId) throw new HttpError(403, 'Cross-tenant access denied');
 
-  const { workerId, result, jsonBlobUrl, companyName, imageUrl, status } = req.body;
+  const { workerId, result } = req.body;
+  const file = (req as any).file; // multer adds 'file'
 
-  if (!workerId || result === undefined)
-    throw new HttpError(400, 'workerId and result are required');
+  if (!workerId || result === undefined) throw new HttpError(400, 'workerId and result are required');
 
-  // ✅ Generate SHA-256 hash as audit evidence
-  const payload = JSON.stringify({ taskId, workerId, result, jsonBlobUrl });
-  const evidenceHash = crypto.createHash('sha256').update(payload).digest(); // Buffer
+  // ✅ Upload image if provided
+  let imageUrl: string | null = null;
+  if (file) {
+    imageUrl = await uploadToGCS(file, `ppe/${companyId}`);
+  }
 
-  // ✅ Save PPE Check locally
+  const payload = JSON.stringify({ taskId, workerId, result, imageUrl });
+  const evidenceHash = crypto.createHash('sha256').update(payload).digest();
+
   const check = await PPECheck.create({
     companyId,
     taskId,
     workerId,
     checkedById: req.user!.sub,
     result,
-    jsonBlobUrl,
+    jsonBlobUrl: imageUrl,
     evidenceHash
   });
 
-  // ✅ Prepare data for external API
-  const externalPayload = {
-    companyId,
-    companyName: companyName || 'Unknown',
-    workerId,
-    imageUrl: imageUrl || jsonBlobUrl || 'N/A',
-    status: status ?? 1 // default to 1 if not provided
-  };
-
-  try {
-    // ✅ Send data to external endpoint
-    const externalResponse = await axios.post('http://34.173.239.52:8080/v1/api/ppe', externalPayload, {
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 8000 // 8 seconds safety timeout
-    });
-
-    console.log('✅ PPE Data synced:', externalResponse.data);
-  } catch (err: any) {
-    console.error('⚠️ PPE external sync failed:', err.message);
-    // Don’t crash the main request; log failure
-  }
-
-  // ✅ Return local confirmation
-  res.json({
-    message: 'PPE check submitted successfully',
+  res.status(201).json({
+    message: 'PPE check uploaded successfully',
     checkId: check._id,
+    imageUrl,
     evidenceHashHex: Buffer.from(evidenceHash).toString('hex')
   });
 }
