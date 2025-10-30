@@ -3,7 +3,7 @@ import path from 'path';
 
 const bucketName = 'toolbox_meeting';
 const storage = new Storage({
-  keyFilename: path.join(__dirname, './gcs-key.json'),
+  keyFilename: path.join(__dirname, './test-file.json'),
 });
 const bucket = storage.bucket(bucketName);
 
