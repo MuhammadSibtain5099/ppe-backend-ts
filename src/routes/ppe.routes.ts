@@ -12,6 +12,6 @@ r.post(
 );
 
 r.get('/companies/:companyId/tasks/:taskId/ppe-checks/:workerId', requireAuth, c.getPPECheck);
-
+r.get('/worker/:workerId/checks', requireAuth, c.getWorkerPPEChecks);
 
 export default r;

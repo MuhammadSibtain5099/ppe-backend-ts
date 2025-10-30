@@ -8,6 +8,15 @@ import TaskAssignment from '../models/TaskAssignment';
 import PPECheck from '../models/PPECheck';
 import { HttpError } from '../middleware/errors';
 
+
+interface PopulatedMembership {
+  userId: { _id: string; name?: string; email?: string } | null;
+  companyId: string;
+  role: string;
+  status: string;
+}
+
+
 const SECRET = process.env.JWT_SECRET || 'test';
 
 
@@ -218,46 +227,91 @@ interface PopulatedMembership {
 export async function listCompanyWorkers(req: Request, res: Response) {
   const { companyId } = req.params;
 
-  // Step 1: Find approved worker memberships
+  // Step 1️⃣: Find approved worker memberships
   const memberships = await Membership.find({
     companyId,
     role: 'worker',
     status: 'approved'
   })
-    .populate({ path: 'userId', model: User, select: ['name', 'email'] })
+    .populate({
+      path: 'userId',
+      model: User,
+      select: ['name', 'email']
+    })
     .lean<PopulatedMembership[]>();
 
   if (!memberships.length) {
     throw new HttpError(404, 'No approved workers found for this company');
   }
 
-  // Step 2: Extract userIds
+  // Step 2️⃣: Extract userIds
   const userIds = memberships
     .map(m => m.userId?._id)
     .filter((id): id is string => Boolean(id));
 
-  // Step 3: Get worker profiles
+  // Step 3️⃣: Fetch worker profiles and explicitly populate email
   const workers = await Worker.find({ userId: { $in: userIds } })
-    .select('userId name phone status photoUrl')
+    .populate({
+      path: 'userId',
+      model: User,
+      select: ['email'] // ✅ ensure email is fetched even if membership lean fails
+    })
+    .select('userId companyId name phone status photoUrl')
     .lean();
 
-  // Step 4: Merge membership + worker + user data
+  // Step 4️⃣: Fetch PPE + Task summary
+  const [taskCounts, ppeCounts] = await Promise.all([
+    TaskAssignment.aggregate([
+      { $match: { workerId: { $in: workers.map(w => w._id) } } },
+      { $group: { _id: '$workerId', count: { $sum: 1 } } }
+    ]),
+    PPECheck.aggregate([
+      { $match: { workerId: { $in: workers.map(w => w._id) } } },
+      {
+        $group: {
+          _id: '$workerId',
+          passCount: { $sum: { $cond: [{ $eq: ['$result', 'pass'] }, 1, 0] } },
+          failCount: { $sum: { $cond: [{ $eq: ['$result', 'fail'] }, 1, 0] } }
+        }
+      }
+    ])
+  ]);
+
+  const taskMap = new Map(taskCounts.map(t => [String(t._id), t.count]));
+  const ppeMap = new Map(
+    ppeCounts.map(p => [String(p._id), { pass: p.passCount, fail: p.failCount }])
+  );
+
+  // Step 5️⃣: Merge everything
   const combined = workers.map(worker => {
     const membership = memberships.find(m => m.userId?._id === String(worker.userId));
+    const ppeSummary = ppeMap.get(String(worker._id)) || { pass: 0, fail: 0 };
+    const taskCount = taskMap.get(String(worker._id)) || 0;
+
     return {
+      companyId: worker.companyId || companyId,
       workerId: worker._id,
       userId: worker.userId,
       name: worker.name || membership?.userId?.name,
-      email: membership?.userId?.email,
+      email:
+        membership?.userId?.email ||
+        (worker.userId as any)?.email || // ✅ fallback to worker.userId.email
+        null,
       phone: worker.phone,
       status: worker.status,
-      membershipStatus: membership?.status
+      membershipStatus: membership?.status,
+      totalTasks: taskCount,
+      ppePass: ppeSummary.pass,
+      ppeFail: ppeSummary.fail
     };
   });
 
-  res.json({ companyId, total: combined.length, workers: combined });
+  res.json({
+    companyId,
+    total: combined.length,
+    workers: combined
+  });
 }
-
 /**
  * UPDATE - Edit worker details
  */
