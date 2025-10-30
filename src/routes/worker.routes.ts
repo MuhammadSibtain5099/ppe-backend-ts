@@ -9,7 +9,8 @@ import {
   workerStats,
   workerHistory,
   addWorkerByCompany,
-  unassignWorkerFromTask
+  unassignWorkerFromTask,
+  updateWorkerDetails 
 } from '../controllers/worker.controller';
 
 import { listCompanyWorkers } from '../controllers/worker.controller';
@@ -47,5 +48,7 @@ r.get(
   requireRole('admin', 'manager'),
   listCompanyWorkers
 );
+
+r.patch('/companies/:companyId/workers/:workerId', requireAuth, updateWorkerDetails);
 
 export default r;
