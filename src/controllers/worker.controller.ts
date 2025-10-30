@@ -257,3 +257,46 @@ export async function listCompanyWorkers(req: Request, res: Response) {
 
   res.json({ companyId, total: combined.length, workers: combined });
 }
+
+/**
+ * UPDATE - Edit worker details
+ */
+export async function updateWorkerDetails(req: Request, res: Response) {
+  const { companyId, workerId } = req.params;
+  const { name, phone, status, photoUrl, email, password } = req.body;
+
+  // ✅ Step 1: Find worker
+  const worker = await Worker.findOne({ _id: workerId, companyId });
+  if (!worker) throw new HttpError(404, 'Worker not found');
+
+  // ✅ Step 2: Update worker basic details
+  if (name) worker.name = name;
+  if (phone) worker.phone = phone;
+  if (status) worker.status = status;
+  if (photoUrl) worker.photoUrl = photoUrl;
+
+  // ✅ Step 3: If user exists, update their account (email/password)
+  if (worker.userId) {
+    const user = await User.findById(worker.userId);
+    if (user) {
+      if (email) user.email = email.toLowerCase();
+      if (password) user.passwordHash = await bcrypt.hash(password, 10);
+      await user.save();
+    }
+  }
+
+  await worker.save();
+
+  res.json({
+    message: 'Worker updated successfully',
+    worker: {
+      _id: worker._id,
+      userId: worker.userId,
+      name: worker.name,
+      phone: worker.phone,
+      status: worker.status,
+      photoUrl: worker.photoUrl
+    }
+  });
+}
+
