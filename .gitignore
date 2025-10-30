@@ -20,3 +20,5 @@ Thumbs.db
 # docker/gcloud
 docker-compose.override.yml
 .gcloudignore
+
+./src/utils/test-file.json
